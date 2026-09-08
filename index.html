@@ -1,0 +1,94 @@
+<!doctype html><html lang="fa" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#087f5b"><link rel="manifest" href="manifest.webmanifest">
+<title>مدیریت فروشگاه و گارانتی</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial;background:#f5f7f9;color:#17202a}
+header{background:#087f5b;color:white;padding:16px;position:sticky;top:0;z-index:5}header h1{margin:0;font-size:20px}
+main{max-width:1100px;margin:auto;padding:14px}.card{background:white;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 2px 10px #0001}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+label{font-size:13px;font-weight:bold;display:block;margin-bottom:5px}
+input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:10px;border:1px solid #ccd3d8;border-radius:9px;background:white}textarea{min-height:75px}
+button{border:0;border-radius:9px;padding:10px 13px;cursor:pointer;background:#087f5b;color:white}.blue{background:#1976d2}.gray{background:#60717c}.red{background:#c62828}.light{background:#edf2f4;color:#17202a}
+.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.small{font-size:12px;color:#65727b}.codes{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px}
+.code-row input{direction:ltr;text-align:left}.item{border:1px solid #e0e5e8;border-radius:12px;padding:12px;margin:9px 0}.badge{display:inline-block;background:#e8f5ee;color:#09633f;border-radius:20px;padding:4px 8px;font-size:12px}.selected{outline:2px solid #087f5b}
+.hidden{display:none!important}
+</style></head><body>
+<header><h1>🛡️ مدیریت فروشگاه و گارانتی</h1></header><main>
+
+<section class="card"><h2>🏪 اطلاعات فروشگاه‌ها / اشخاص</h2>
+<p class="small">اطلاعات را یک‌بار ثبت کنید؛ در ثبت‌های بعدی فقط فروشگاه را انتخاب کنید.</p>
+<div class="grid">
+<div><label>👤 نام شخص</label><input id="person"></div><div><label>🏪 نام فروشگاه</label><input id="shop"></div>
+<div><label>📞 شماره تماس ۱</label><input id="p1" inputmode="tel"></div><div><label>📞 شماره تماس ۲</label><input id="p2" inputmode="tel"></div><div><label>📞 شماره تماس ۳</label><input id="p3" inputmode="tel"></div>
+<div><label>📍 شهر</label><input id="city"></div><div style="grid-column:1/-1"><label>🏠 آدرس</label><textarea id="address"></textarea></div>
+</div><div class="actions"><button onclick="saveStore()">💾 ذخیره فروشگاه</button><button class="light" onclick="clearStore()">پاک کردن</button></div>
+<div id="stores"></div></section>
+
+<section class="card"><h2>🎫 ثبت گارانتی برای فروشگاه انتخاب‌شده</h2><div id="selected" class="small">ابتدا یک فروشگاه را انتخاب کنید.</div>
+<div class="grid" style="margin-top:10px"><div><label>🎫 تعداد کارت (۲۰ تا ۳۰)</label><input id="count" type="number" min="20" max="30" value="20"></div>
+<div><label>📅 تاریخ تحویل شمسی</label><input id="date" placeholder="مثلاً ۱۴۰۵/۰۶/۱۷"></div>
+<div><label>🛡️ نوع کارت</label><select id="type"><option>گلد</option><option>سام</option><option>بوش</option><option>لوازم خرده‌ریز</option></select></div></div>
+<label style="margin-top:12px">🔢 کدهای گارانتی</label><div id="codes" class="codes"></div>
+<p class="small">شماره ۱ تا ۳۰، نقطه و هیچ پسوندی به کد اضافه نمی‌شود. مثال: 78905 دقیقاً 78905 می‌ماند.</p>
+<div class="actions"><button onclick="saveWarranty()">💾 ذخیره گارانتی</button><button class="light" onclick="resetWarranty()">پاک کردن</button></div></section>
+
+<section class="card"><h2>🔎 جستجو</h2><input id="search" placeholder="نام، فروشگاه، شهر، تلفن یا کد گارانتی"><div id="warranties"></div></section>
+<section class="card"><h2>📊 پشتیبان و خروجی</h2><div class="actions">
+<button onclick="csv()">📄 CSV / Excel</button><button class="gray" onclick="backup()">🛡️ پشتیبان‌گیری</button>
+<button class="gray" onclick="file.click()">♻️ بازیابی</button><input id="file" type="file" accept=".json" class="hidden">
+</div><p class="small">اطلاعات محلی روی همین گوشی/مرورگر ذخیره می‌شود.</p></section>
+</main>
+<script>
+const KEY="warranty_manager_v3", WA="https://chat.whatsapp.com/ElqzeVcWaJiANem5X1hflO";
+let db=JSON.parse(localStorage.getItem(KEY)||'{"stores":[],"warranties":[]}'), selected=null, editId=null;
+const $=id=>document.getElementById(id);
+const fa=s=>String(s??"").replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const saveDB=()=>localStorage.setItem(KEY,JSON.stringify(db));
+function codeInputs(n=20,vals=[]){n=Math.max(20,Math.min(30,Number(n)||20));$("count").value=n;$("codes").innerHTML="";
+for(let i=0;i<n;i++){let d=document.createElement("div");d.className="code-row";let x=document.createElement("input");x.className="gc";x.placeholder="کد گارانتی";x.inputMode="numeric";x.value=vals[i]||"";d.append(x);$("codes").append(d)}}
+$("count").oninput=e=>codeInputs(e.target.value);codeInputs();
+
+function clearStore(){editId=null;["person","shop","p1","p2","p3","city","address"].forEach(id=>$(id).value="")}
+function saveStore(){let r={id:editId||crypto.randomUUID(),person:$("person").value.trim(),shop:$("shop").value.trim(),phones:[$("p1").value.trim(),$("p2").value.trim(),$("p3").value.trim()].filter(Boolean),city:$("city").value.trim(),address:$("address").value.trim()};
+if(!r.person&&!r.shop){alert("نام شخص یا نام فروشگاه را وارد کنید.");return}let i=db.stores.findIndex(x=>x.id===r.id);if(i>=0)db.stores[i]=r;else db.stores.push(r);selected=r.id;saveDB();clearStore();render()}
+function editStore(id){let r=db.stores.find(x=>x.id===id);editId=id;$("person").value=r.person;$("shop").value=r.shop;$("p1").value=r.phones[0]||"";$("p2").value=r.phones[1]||"";$("p3").value=r.phones[2]||"";$("city").value=r.city;$("address").value=r.address;scrollTo({top:0,behavior:"smooth"})}
+function deleteStore(id){if(db.warranties.some(w=>w.storeId===id)){alert("این فروشگاه گارانتی ثبت‌شده دارد؛ ابتدا گارانتی‌ها را حذف کنید.");return}if(confirm("فروشگاه حذف شود؟")){db.stores=db.stores.filter(x=>x.id!==id);if(selected===id)selected=null;saveDB();render()}}
+function copyStore(r){navigator.clipboard.writeText(`🏪 ${r.shop||"-"}
+👤 ${r.person||"-"}
+📞 ${r.phones.join(" | ")||"-"}
+📍 ${r.city||"-"}
+🏠 ${r.address||"-"}`);alert("اطلاعات فروشگاه کپی شد.")}
+function renderStores(){$("stores").innerHTML=db.stores.map(r=>`<div class="item ${selected===r.id?"selected":""}"><b>🏪 ${esc(r.shop||r.person)}</b><div class="small">👤 ${esc(r.person)} | 📍 ${esc(r.city)} | 📞 ${esc(r.phones.join("، "))}</div><div class="actions"><button onclick="selectStore('${r.id}')">🎫 انتخاب</button><button class="light" onclick="copyStore(db.stores.find(x=>x.id==='${r.id}'))">📋 کپی</button><button onclick="editStore('${r.id}')">✏️ ویرایش</button><button class="red" onclick="deleteStore('${r.id}')">🗑️ حذف</button></div></div>`).join("")||"<p class='small'>فروشگاهی ثبت نشده است.</p>";
+let s=db.stores.find(x=>x.id===selected);$("selected").innerHTML=s?`فروشگاه انتخاب‌شده: <b>${esc(s.shop||s.person)}</b> — ${esc(s.city)}`:"ابتدا یک فروشگاه را انتخاب کنید."}
+function selectStore(id){selected=id;render()}
+function resetWarranty(){codeInputs(20);$("date").value="";$("type").value="گلد"}
+function saveWarranty(){if(!selected){alert("ابتدا فروشگاه را انتخاب کنید.");return}let n=Number($("count").value);if(n<20||n>30){alert("تعداد کارت باید بین ۲۰ تا ۳۰ باشد.");return}
+let codes=[...document.querySelectorAll(".gc")].map(x=>fa(x.value.trim()));if(codes.length!==n||codes.some(x=>!x)){alert("همه کدها را دقیقاً به تعداد کارت وارد کنید.");return}
+let dup=codes.find((x,i)=>codes.indexOf(x)!==i);if(dup){alert("کد تکراری: "+dup);return}
+db.warranties.unshift({id:crypto.randomUUID(),storeId:selected,count:n,date:$("date").value.trim(),type:$("type").value,codes});saveDB();resetWarranty();render();alert("گارانتی ذخیره شد.")}
+function full(w){let s=db.stores.find(x=>x.id===w.storeId)||{};return `🛡️ اطلاعات گارانتی
+👤 ${s.person||"-"}
+🏪 ${s.shop||"-"}
+📞 ${(s.phones||[]).join(" | ")||"-"}
+📍 ${s.city||"-"}
+🏠 ${s.address||"-"}
+🎫 تعداد کارت: ${w.count}
+📅 تاریخ تحویل: ${w.date||"-"}
+🛡️ نوع کارت: ${w.type}
+🔢 کدهای گارانتی:
+${w.codes.join("\n")}`}
+function copy(w){navigator.clipboard.writeText(full(w));alert("کل اطلاعات کپی شد.")}
+function wa(w){copy(w);setTimeout(()=>window.open(WA,"_blank","noopener"),300)}
+function call(w){let s=db.stores.find(x=>x.id===w.storeId);if(s?.phones[0])location.href="tel:"+s.phones[0]}
+function sms(w){let s=db.stores.find(x=>x.id===w.storeId);if(s?.phones[0])location.href="sms:"+s.phones[0]+"?body="+encodeURIComponent(full(w))}
+function delW(id){if(confirm("این گارانتی حذف شود؟")){db.warranties=db.warranties.filter(x=>x.id!==id);saveDB();render()}}
+function renderW(){let q=$("search").value.toLowerCase();let a=db.warranties.filter(w=>JSON.stringify({...w,store:db.stores.find(s=>s.id===w.storeId)||{}}).toLowerCase().includes(q));
+$("warranties").innerHTML=a.map(w=>{let s=db.stores.find(x=>x.id===w.storeId)||{};return `<div class="item"><b>🏪 ${esc(s.shop||s.person||"-")}</b> <span class="badge">${esc(w.type)}</span><div>👤 ${esc(s.person)} | 📍 ${esc(s.city)} | 📞 ${esc((s.phones||[]).join("، "))}</div><div>🎫 ${w.count} کارت | 📅 ${esc(w.date)}</div><div class="small">کدها: ${w.codes.map(esc).join("، ")}</div><div class="actions"><button onclick="wa(db.warranties.find(x=>x.id==='${w.id}'))">🟢 واتساپ</button><button class="light" onclick="copy(db.warranties.find(x=>x.id==='${w.id}'))">📋 کپی</button><button class="blue" onclick="call(db.warranties.find(x=>x.id==='${w.id}'))">📞 تماس</button><button class="gray" onclick="sms(db.warranties.find(x=>x.id==='${w.id}'))">💬 پیامک</button><button class="red" onclick="delW('${w.id}')">🗑️ حذف</button></div></div>`}).join("")||"<p class='small'>اطلاعاتی پیدا نشد.</p>"}
+function csv(){let rows=[["نام","فروشگاه","تلفن1","تلفن2","تلفن3","شهر","آدرس","تعداد کارت","تاریخ","نوع","کدها"]];db.warranties.forEach(w=>{let s=db.stores.find(x=>x.id===w.storeId)||{};rows.push([s.person||"",s.shop||"",...(s.phones||[]),s.city||"",s.address||"",w.count,w.date,w.type,w.codes.join(" | ")]);});let x="\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");download(new Blob([x],{type:"text/csv;charset=utf-8"}),"guarantee.csv")}
+function backup(){download(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),"guarantee-backup.json")}
+function download(b,n){let a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=n;a.click()}
+$("search").oninput=renderW;$("file").onchange=e=>{let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.stores||!x.warranties)throw 0;db=x;saveDB();render();alert("بازیابی شد")}catch{alert("فایل پشتیبان معتبر نیست")}};r.readAsText(e.target.files[0])};
+function render(){renderStores();renderW()}render();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script></body></html>
