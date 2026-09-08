@@ -1,0 +1,11 @@
+{
+  "name": "مدیریت گارانتی راسان V5",
+  "short_name": "گارانتی راسان",
+  "start_url": "./index.html?v=5-final",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#1565c0",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": []
+}
