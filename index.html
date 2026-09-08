@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1565c0">
+<link rel="manifest" href="manifest.json">
+<title>مدیریت گارانتی راسان V5</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#18222d;font-family:Tahoma,Arial,sans-serif}
+header{background:#1565c0;color:#fff;padding:18px 14px;position:sticky;top:0;z-index:10}
+main{max-width:900px;margin:auto;padding:14px}.card{background:#fff;margin:12px 0;padding:15px;border-radius:14px;box-shadow:0 2px 9px #0001}
+h1{font-size:21px;margin:0 0 5px}h2{font-size:17px;margin:0 0 12px}.sub,.small{font-size:11px;opacity:.9}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}@media(max-width:600px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:12px;margin:5px 0;color:#56616c}input,select,textarea{width:100%;padding:11px;border:1px solid #d4dce5;border-radius:10px;font:inherit}
+textarea{min-height:170px;direction:ltr;text-align:left;font-family:monospace;white-space:pre-wrap}
+button{border:0;border-radius:10px;padding:10px 13px;background:#1565c0;color:#fff;font:inherit;cursor:pointer}
+button.secondary{background:#e8edf3;color:#18222d}button.danger{background:#c62828}button.success{background:#2e7d32}
+.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.notice{padding:10px;border-radius:10px;background:#eaf2ff;border:1px solid #c8dcff;font-size:12px;line-height:1.8}
+.item{border:1px solid #e1e6eb;border-radius:12px;padding:12px;margin:9px 0}.item h3{font-size:15px;margin:0 0 7px}.meta{font-size:12px;line-height:1.9;color:#4d5964}
+.codes{direction:ltr;text-align:left;white-space:pre-wrap;background:#f7f9fc;border-radius:9px;padding:10px;margin-top:8px;font-family:monospace;line-height:1.8;overflow:auto}
+.badge{display:inline-block;background:#edf1f5;padding:3px 8px;border-radius:20px;font-size:11px;margin:2px}.empty{text-align:center;padding:18px;color:#77828c}
+</style>
+</head>
+<body>
+<header><h1>مدیریت گارانتی راسان</h1><div class="sub">نسخه نهایی V5 — تک‌ستونه، مرتب و بدون مشکل کپی</div></header>
+<main>
+<section class="card">
+<h2>۱) ذخیره فروشگاه / فرد</h2>
+<div class="notice">فروشگاه یا فرد را می‌توانید بدون هیچ کد گارانتی ذخیره کنید.</div>
+<div class="grid">
+<div><label>نام فروشگاه / فرد</label><input id="pn"></div>
+<div><label>شهر</label><input id="city"></div>
+<div><label>تلفن ۱</label><input id="ph1" inputmode="tel"></div>
+<div><label>تلفن ۲</label><input id="ph2" inputmode="tel"></div>
+<div><label>تلفن ۳</label><input id="ph3" inputmode="tel"></div>
+<div><label>آدرس</label><input id="addr"></div>
+</div>
+<input id="epid" type="hidden">
+<div class="actions"><button onclick="savePerson()">ذخیره فروشگاه / فرد</button><button class="secondary" onclick="clearPerson()">پاک کردن</button></div>
+</section>
+
+<section class="card">
+<h2>۲) ثبت گارانتی</h2>
+<div class="grid">
+<div><label>فروشگاه / فرد</label><select id="person"></select></div>
+<div><label>نوع کارت</label><select id="type"><option>گلد</option><option>سام</option><option>بوش</option><option>لوازم خرده‌ریز</option></select></div>
+<div><label>تاریخ تحویل</label><input id="delivery"></div>
+<div><label>تعداد کارت</label><input id="count" type="number" min="0"></div>
+</div>
+<label>کدها — هر کد یک خط</label>
+<textarea id="codes" placeholder="85200&#10;85201&#10;85202"></textarea>
+<div class="actions"><button class="secondary" onclick="cleanAndSort()">پاکسازی و مرتب‌سازی</button><button onclick="saveRecord()">ثبت گارانتی</button><button class="secondary" onclick="clearRecord()">پاک کردن</button></div>
+<div class="small">کدها فقط خود کد هستند؛ شماره‌گذاری، n، \n و علائم اضافی حذف می‌شوند.</div>
+</section>
+
+<section class="card">
+<h2>۳) جستجو و پشتیبان</h2>
+<input id="search" placeholder="نام، فروشگاه، شهر، تلفن یا کد..." oninput="render()">
+<div class="actions">
+<button class="secondary" onclick="exportCSV()">CSV برای Excel</button>
+<button class="secondary" onclick="backup()">پشتیبان‌گیری</button>
+<button class="secondary" onclick="document.getElementById('file').click()">بازیابی</button>
+<input id="file" type="file" accept=".json" style="display:none" onchange="restore(event)">
+</div>
+</section>
+
+<section class="card"><h2>۴) سوابق گارانتی</h2><div id="records"></div></section>
+<section class="card"><h2>۵) افراد و فروشگاه‌ها</h2><div id="people"></div></section>
+</main>
+
+<script>
+const KEY='rasanWarrantyManager_V5_FINAL_20260908';
+const OLD=['rasanWarrantyManager_final_v4','rasanWarrantyManager_v5_FINAL_20260908','rasanWarrantyManager_v3','rasanWarrantyManager_v2'];
+const MYWA='989187227866';
+let db=load(), editId=null;
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function nd(s){return String(s??'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))}
+function cleanCode(v){
+ let s=nd(v).trim();
+ s=s.replace(/\\n/g,'').replace(/\\r/g,'').replace(/\r?\n/g,'').trim();
+ s=s.replace(/^\s*\d+\s*[\)\.\-:]\s*/,'');
+ s=s.replace(/n+$/i,'').trim();
+ s=s.replace(/[^\p{L}\p{N}]/gu,'');
+ return s;
+}
+function codesFromText(t){
+ return [...new Set(String(t??'').split(/[\r\n,،;]+/).map(cleanCode).filter(Boolean))].sort((a,b)=>{
+  const na=Number(a),nb=Number(b);
+  if(Number.isFinite(na)&&Number.isFinite(nb))return na-nb;
+  return a.localeCompare(b,'fa',{numeric:true,sensitivity:'base'});
+ });
+}
+function load(){
+ let raw=localStorage.getItem(KEY);
+ if(!raw)for(const k of OLD){const z=localStorage.getItem(k);if(z){raw=z;break}}
+ let x={people:[],records:[]};
+ try{if(raw)x=JSON.parse(raw)}catch(e){}
+ x.people=Array.isArray(x.people)?x.people:[];
+ x.records=Array.isArray(x.records)?x.records:[];
+ x.records.forEach(r=>r.codes=codesFromText(Array.isArray(r.codes)?r.codes.join('\n'):r.codes));
+ save(x);return x;
+}
+function save(x=db){db=x;localStorage.setItem(KEY,JSON.stringify(db))}
+function v(id){return document.getElementById(id).value.trim()}
+function setv(id,x){document.getElementById(id).value=x??''}
+function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+function savePerson(){
+ const name=v('pn');if(!name)return alert('نام را وارد کنید.');
+ const d={name,city:v('city'),phones:[v('ph1'),v('ph2'),v('ph3')].filter(Boolean),address:v('addr')};
+ const eid=v('epid');
+ if(eid){const p=db.people.find(x=>x.id===eid);if(p)Object.assign(p,d)}
+ else db.people.push({id:uid(),...d});
+ save();clearPerson();render();alert('اطلاعات ذخیره شد.');
+}
+function clearPerson(){['pn','city','ph1','ph2','ph3','addr','epid'].forEach(x=>setv(x,''))}
+function editPerson(id){
+ const p=db.people.find(x=>x.id===id);if(!p)return;
+ setv('pn',p.name);setv('city',p.city);setv('ph1',p.phones?.[0]);setv('ph2',p.phones?.[1]);setv('ph3',p.phones?.[2]);setv('addr',p.address);setv('epid',id);
+ scrollTo({top:0,behavior:'smooth'});
+}
+function deletePerson(id){if(confirm('این فروشگاه/فرد حذف شود؟')){db.people=db.people.filter(p=>p.id!==id);save();render()}}
+function populate(){
+ const s=document.getElementById('person'),old=s.value;
+ s.innerHTML='<option value="">انتخاب کنید...</option>'+db.people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}${p.city?' — '+esc(p.city):''}</option>`).join('');
+ if(db.people.some(p=>p.id===old))s.value=old;
+}
+function cleanAndSort(){setv('codes',codesFromText(v('codes')).join('\n'))}
+function saveRecord(){
+ const pid=v('person'),p=db.people.find(x=>x.id===pid),cs=codesFromText(v('codes'));
+ if(!p)return alert('ابتدا فروشگاه یا فرد را ذخیره و انتخاب کنید.');
+ if(!cs.length)return alert('کد گارانتی وارد نشده است.');
+ const d={personId:pid,type:v('type'),delivery:v('delivery'),count:v('count')||String(cs.length),codes:cs};
+ if(editId){const r=db.records.find(x=>x.id===editId);if(r)Object.assign(r,d)}
+ else db.records.unshift({id:uid(),...d});
+ save();clearRecord();render();alert('گارانتی ثبت شد.');
+}
+function clearRecord(){editId=null;setv('codes','');setv('delivery','');setv('count','');document.getElementById('type').value='گلد';document.getElementById('person').value=''}
+function getP(r){return db.people.find(p=>p.id===r.personId)||{name:'فروشگاه حذف‌شده',city:'',phones:[],address:''}}
+function fullText(r){
+ const p=getP(r);
+ const lines=[
+ '🛡️ اطلاعات گارانتی',
+ '👤 '+p.name,
+ '📞 '+((p.phones||[]).join(' | ')||'-'),
+ '🏠 '+(p.address||'-'),
+ '📍 '+(p.city||'-'),
+ '🎫 تعداد کارت: '+(r.count||r.codes.length),
+ '📅 تاریخ تحویل: '+(r.delivery||'-'),
+ '🛡️ نوع کارت: '+r.type,
+ '🔢 کدهای گارانتی:'
+ ];
+ // مهم: اینجا کدها با newline واقعی به متن اضافه می‌شوند، نه رشته \\n
+ return lines.concat(r.codes).join('\n');
+}
+async function copyRecord(id){
+ const r=db.records.find(x=>x.id===id);if(!r)return;
+ const text=fullText(r);
+ try{
+   if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(text);
+   else fallbackCopy(text);
+   alert('اطلاعات کامل با خط‌های واقعی کپی شد.');
+ }catch(e){fallbackCopy(text)}
+}
+function fallbackCopy(text){
+ const ta=document.createElement('textarea');
+ ta.value=text;ta.setAttribute('readonly','');
+ ta.style.position='fixed';ta.style.left='-9999px';ta.style.top='0';
+ document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);
+ document.execCommand('copy');ta.remove();
+}
+async function shareWA(id){
+ const r=db.records.find(x=>x.id===id);if(!r)return;
+ const text=fullText(r);
+ if(navigator.share){
+   try{await navigator.share({title:'اطلاعات گارانتی',text});return}catch(e){}
+ }
+ try{await navigator.clipboard.writeText(text)}catch(e){fallbackCopy(text)}
+ window.open('https://wa.me/'+MYWA+'?text='+encodeURIComponent(text),'_blank');
+}
+function call(id){const p=db.people.find(x=>x.id===id),n=p?.phones?.[0];if(n)location.href='tel:'+n;else alert('شماره ثبت نشده است.')}
+function sms(id){const p=db.people.find(x=>x.id===id),n=p?.phones?.[0];if(n)location.href='sms:'+n;else alert('شماره ثبت نشده است.')}
+function editRecord(id){
+ const r=db.records.find(x=>x.id===id);if(!r)return;
+ editId=id;document.getElementById('person').value=r.personId;document.getElementById('type').value=r.type;
+ setv('delivery',r.delivery);setv('count',r.count);setv('codes',codesFromText(r.codes.join('\n')).join('\n'));
+ scrollTo({top:0,behavior:'smooth'});
+}
+function deleteRecord(id){if(confirm('این سابقه حذف شود؟')){db.records=db.records.filter(r=>r.id!==id);save();render()}}
+function match(r,q){
+ const p=getP(r);
+ return [p.name,p.city,p.address,...(p.phones||[]),r.type,r.delivery,...r.codes].join(' ').toLowerCase().includes(q);
+}
+function renderRecords(){
+ const q=v('search').toLowerCase(),list=db.records.filter(r=>!q||match(r,q)),el=document.getElementById('records');
+ if(!list.length){el.innerHTML='<div class="empty">سابقه‌ای پیدا نشد.</div>';return}
+ el.innerHTML=list.map(r=>{
+ const p=getP(r);
+ return `<div class="item"><h3>${esc(p.name)} <span class="badge">${esc(r.type)}</span> <span class="badge">${r.codes.length} کد</span></h3>
+ <div class="meta">شهر: ${esc(p.city||'-')}<br>تلفن: ${esc((p.phones||[]).join(' | ')||'-')}<br>آدرس: ${esc(p.address||'-')}<br>تحویل: ${esc(r.delivery||'-')}</div>
+ <div class="codes">${esc(r.codes.join('\n'))}</div>
+ <div class="actions"><button onclick="copyRecord('${r.id}')">کپی کامل</button><button class="success" onclick="shareWA('${r.id}')">ارسال واتساپ / گروه</button><button onclick="call('${r.personId}')">تماس</button><button onclick="sms('${r.personId}')">پیامک</button><button class="secondary" onclick="editRecord('${r.id}')">ویرایش</button><button class="danger" onclick="deleteRecord('${r.id}')">حذف</button></div></div>`
+ }).join('');
+}
+function renderPeople(){
+ const q=v('search').toLowerCase(),list=db.people.filter(p=>!q||[p.name,p.city,p.address,...(p.phones||[])].join(' ').toLowerCase().includes(q)),el=document.getElementById('people');
+ if(!list.length){el.innerHTML='<div class="empty">فروشگاه یا فردی پیدا نشد.</div>';return}
+ el.innerHTML=list.map(p=>{
+ const n=db.records.filter(r=>r.personId===p.id).reduce((a,r)=>a+r.codes.length,0);
+ return `<div class="item"><h3>${esc(p.name)} <span class="badge">${n} کد</span></h3>
+ <div class="meta">شهر: ${esc(p.city||'-')}<br>تلفن: ${esc((p.phones||[]).join(' | ')||'-')}<br>آدرس: ${esc(p.address||'-')}</div>
+ <div class="actions"><button onclick="editPerson('${p.id}')">ویرایش</button><button onclick="call('${p.id}')">تماس</button><button onclick="sms('${p.id}')">پیامک</button><button class="danger" onclick="deletePerson('${p.id}')">حذف</button></div></div>`
+ }).join('');
+}
+function render(){populate();renderRecords();renderPeople()}
+function exportCSV(){
+ const rows=[['نام','شهر','تلفن','آدرس','نوع کارت','تاریخ','تعداد','کد']];
+ db.records.forEach(r=>{const p=getP(r);r.codes.forEach(c=>rows.push([p.name,p.city,(p.phones||[]).join(' | '),p.address,r.type,r.delivery,r.count||r.codes.length,c]))});
+ const csv='\uFEFF'+rows.map(row=>row.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='rasan-warranty.csv';a.click();
+}
+function backup(){
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='rasan-warranty-backup.json';a.click();
+}
+function restore(e){
+ const f=e.target.files[0];if(!f)return;
+ const rd=new FileReader();
+ rd.onload=()=>{try{
+   const x=JSON.parse(rd.result);if(!Array.isArray(x.people)||!Array.isArray(x.records))throw 0;
+   x.records.forEach(r=>r.codes=codesFromText(r.codes));
+   db=x;save();render();alert('پشتیبان بازیابی شد.');
+ }catch(z){alert('فایل پشتیبان معتبر نیست.')}};
+ rd.readAsText(f);e.target.value='';
+}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=5-final').catch(()=>{});
+render();
+</script>
+</body>
+</html>
